@@ -1,47 +1,12 @@
-import { PrismaClient } from '@prisma/client/edge';
-import { withAccelerate } from "@prisma/extension-accelerate";
-import { Context, Hono } from "hono";
-import { sign } from "hono/jwt";
+import { Hono } from "hono";
+import user from "./routes/userRoutes";
+import blog from "./routes/blogRoutes";
+import {cors} from "hono/cors"
 
-const app = new Hono<{
-    Bindings : {
-        DATABASE_URL : string,
-        JWT_SECRET : string
-    }
-}>();
+const app = new Hono();
 
-app.post("/signup",async (c)=>{
-    const prisma = new PrismaClient({
-        datasourceUrl : c.env.DATABASE_URL,
-    }).$extends(withAccelerate());
+app.use('/api/*',cors());
+app.route("/api/v1/user",user);
+app.route("/api/v1/blog",blog)
 
-    const body =await c.req.json()
-    try{
-        const response = await prisma.user.create({
-            data : {
-                email : body.email,
-                password : body.password,
-            }
-        })
-        
-        const payload = {
-            id : response.id,
-            email : response.email,
-            password : response.password
-        }
-
-        const token = await sign(payload,c.env.JWT_SECRET);
-
-        c.json({
-            message : "user created successfully",
-            token
-        })
-    }
-
-    catch(e){
-        c.json({
-            message : "internal server error"
-        })
-    }
-})
 export default app;
